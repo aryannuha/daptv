@@ -1,6 +1,3 @@
-# daptv
-penelitian daptv
-
 # struktur file
 root folder <br />
   static <br />

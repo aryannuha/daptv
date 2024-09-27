@@ -1,8 +1,8 @@
 # struktur file
 root folder <br />
-  -static <br />
-    -style.css <br />
-  -templates <br />
-    -index.html <br />
-  -main.py <br />
-  -haarcascade_frontalface_default.xml
+  - static <br />
+    - style.css <br />
+  - templates <br />
+    - index.html <br />
+  - main.py <br />
+  - haarcascade_frontalface_default.xml

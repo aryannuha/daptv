@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/style.css">
+    <title>Face and Temperature Detection</title>
+</head>
+<body>
+    <h1>Real-Time Face and Temperature Detection</h1>
+    <div class="container">
+        <!-- Video stream on the left -->
+        <div class="video-container">
+            <img src="{{ url_for('video_feed') }}" alt="Video stream" id="video">
+        </div>
+        <!-- Table on the right -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="name">Unknown</td>
+                        <td id="status">Not Recognized</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

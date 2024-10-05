@@ -1,29 +1,66 @@
 from ultralytics import YOLO
+from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, render_template, Response, jsonify
 import cv2
 import pandas as pd
 import time
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'  # Database SQLite
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-# Load tflite model
-model = YOLO('best_float32.tflite')
+# Load YOLO model
+model = YOLO('model/best_float32New.tflite', task='detect')
 
 # Load class list
 with open("coco1.txt", "r") as my_file:
     class_list = my_file.read().split("\n")
 
 # Global variable
-# count = 0
-
 detected_name = "Unknown"  # Default name
-status = "Not Recognized"   # Default status
+status = "Not Recognized"  # Default status
 
+# Model untuk tabel Attendance
+class Attendance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+    tanggal = db.Column(db.String(20), nullable=False)  # Kolom tanggal
+
+    def __repr__(self):
+        return f"<Attendance {self.name} - {self.status} - {self.tanggal}>"
+
+# Inisialisasi Database
+with app.app_context():
+    db.create_all()
+
+# Fungsi untuk update kehadiran ke database
+def update_attendance(detected_name, status):
+    # Cek apakah orang tersebut sudah ada di database
+    attendance = Attendance.query.filter_by(name=detected_name).first()
+    current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Mendapatkan tanggal sekarang
+
+    if attendance:
+        attendance.status = status  # Jika sudah ada, update status
+        attendance.tanggal = current_date  # Update tanggal
+    else:
+        new_entry = Attendance(name=detected_name, status=status, tanggal=current_date)  # Jika belum ada, buat entri baru
+        db.session.add(new_entry)
+
+    db.session.commit()  # Simpan perubahan
+
+# Generate frames for video streaming
 def generate_frames():
-    # global count  # Declare global variable to modify it inside the function
     global detected_name, status  # Use global variables
     cap = cv2.VideoCapture(0)  # Capture from camera
-    prev_time = 0  # To calculate FPS
+
+    if not cap.isOpened():
+        print("Error: Camera is not accessible.")
+        return
+
+    prev_time = 0  # Initialize time for FPS calculation
 
     while True:
         # Capture frame-by-frame
@@ -31,18 +68,14 @@ def generate_frames():
         if not success:
             break
         else:
-            # count += 1
-            # if count % 3 != 0:
-            #     continue
-
-            # Get current time to calculate FPS
+            # FPS calculation
             curr_time = time.time()
             fps = 1 / (curr_time - prev_time)
             prev_time = curr_time
 
             # Run YOLO model on frame
             results = model(frame, imgsz=240)
-            if len(results) > 0:
+            if results:  # Check if results is not empty
                 a = results[0].boxes.data
                 px = pd.DataFrame(a).astype("float")
 
@@ -53,9 +86,13 @@ def generate_frames():
                     d = int(row[5])  # Class ID
                     c = class_list[d]  # Class name
 
-                     # Update detected name and status
-                    detected_name = c  # Update detected name
-                    status = "Hadir"    # Update status to "Hadir"
+                    # Update detected name and status
+                    detected_name = c  # Detected class name
+                    status = "Hadir"  # Update status
+
+                    # Update attendance to database within app context
+                    with app.app_context():
+                        update_attendance(detected_name, status)
 
                     # Draw bounding box (white color)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
@@ -79,15 +116,22 @@ def generate_frames():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Menampilkan halaman index dengan data kehadiran
+    attendances = Attendance.query.all()  # Ambil semua data dari tabel Attendance
+    return render_template('index.html', attendances=attendances)
 
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/status')
-def get_status():
-    return jsonify(name=detected_name, status=status)  # Send detected name and status as JSON
+@app.route('/attendance_data')
+def attendance_data():
+    attendances = Attendance.query.all()
+    attendance_list = [
+        {"name": attendance.name, "status": attendance.status, "tanggal": attendance.tanggal}
+        for attendance in attendances
+    ]
+    return jsonify(attendance_list)
 
 if __name__ == "__main__":
     app.run(debug=True)

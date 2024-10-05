@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../static/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-    <title>Face and Temperature Detection</title>
+    <title>Attendance Check based Face Detection</title>
 </head>
 <body>
-    <h1>Real-Time Face and Temperature Detection</h1>
+    <h1>Attendance Check based Face Detection</h1>
     <div class="container">
         <!-- Video stream on the left -->
         <div class="video-container">
@@ -21,13 +21,11 @@
                     <tr>
                         <th>Name</th>
                         <th>Status</th>
+                        <th>Tanggal</th>  <!-- Kolom untuk tanggal -->
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td id="name">Unknown</td>
-                        <td id="status">Not Recognized</td>
-                    </tr>
+                <tbody id="attendace-table">
+                    <!-- data will populated here-->
                 </tbody>
             </table>
         </div>

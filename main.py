@@ -12,7 +12,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Load YOLO model
-model = YOLO('model/best_float32New.tflite', task='detect')
+model = YOLO('model/w_masked.tflite', task='detect')
 
 # Load class list
 with open("coco1.txt", "r") as my_file:
@@ -38,18 +38,22 @@ with app.app_context():
 
 # Fungsi untuk update kehadiran ke database
 def update_attendance(detected_name, status):
-    # Cek apakah orang tersebut sudah ada di database
-    attendance = Attendance.query.filter_by(name=detected_name).first()
-    current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Mendapatkan tanggal sekarang
+    # Mendapatkan tanggal dan waktu sekarang
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Format lengkap dengan jam
+    current_date = datetime.now().strftime("%Y-%m-%d")  # Format hanya tahun-bulan-hari
 
-    if attendance:
-        attendance.status = status  # Jika sudah ada, update status
-        attendance.tanggal = current_date  # Update tanggal
+    # Cek apakah orang tersebut sudah ada di database pada tanggal yang sama (hanya tahun-bulan-hari)
+    attendance_today = Attendance.query.filter_by(name=detected_name).filter(Attendance.tanggal.like(f"{current_date}%")).first()
+
+    if attendance_today:
+        # Jika sudah ada entri untuk hari ini, tidak melakukan apa-apa
+        print(f"Data untuk {detected_name} pada hari ini sudah ada.")
     else:
-        new_entry = Attendance(name=detected_name, status=status, tanggal=current_date)  # Jika belum ada, buat entri baru
+        # Jika tidak ada entri pada hari ini, tambahkan entri baru dengan tanggal dan waktu
+        new_entry = Attendance(name=detected_name, status=status, tanggal=current_datetime)
         db.session.add(new_entry)
-
-    db.session.commit()  # Simpan perubahan
+        db.session.commit()  # Simpan perubahan
+        print(f"Entri baru untuk {detected_name} ditambahkan ke database.")
 
 # Generate frames for video streaming
 def generate_frames():
